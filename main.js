@@ -15,8 +15,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const puppeteer_1 = __importDefault(require("puppeteer"));
 const { join } = require("path");
 const fs = require("fs");
-// const fetch = require("fetch");
-(() => __awaiter(void 0, void 0, void 0, function* () {
+const readline = require("readline");
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+let searchKeyword;
+rl.question("SEARCH KEYWORD: ", (input) => __awaiter(void 0, void 0, void 0, function* () {
+    searchKeyword = input;
+    yield crawl();
+    rl.close();
+}));
+const crawl = () => __awaiter(void 0, void 0, void 0, function* () {
     const browser = yield puppeteer_1.default.launch({
         headless: false,
     });
@@ -27,7 +37,7 @@ const fs = require("fs");
         imagesCount = files.length;
     });
     const parameter = "&tbm=isch";
-    page.goto(`https://google.com/search?q=Fu+Xuan${parameter}`);
+    page.goto(`https://google.com/search?q=${searchKeyword}${parameter}`);
     yield new Promise((resolve) => setTimeout(resolve, 1000));
     yield page.waitForNavigation({ waitUntil: "networkidle2" });
     const anchors = yield page.$$(".islrc .isv-r a.islib");
@@ -40,10 +50,17 @@ const fs = require("fs");
             yield new Promise((resolve) => setTimeout(resolve, 100));
         } while (href == "");
         const url = new URL(href).searchParams.get("imgurl");
+        console.log(url);
         if (url) {
-            const buffer = Buffer.from(yield (yield fetch(url)).arrayBuffer());
-            fs.createWriteStream(`./images/${imagesCount++}.png`).write(buffer);
+            try {
+                const buffer = Buffer.from(yield (yield fetch(url).catch()).arrayBuffer());
+                fs.createWriteStream(`./images/${imagesCount++}.png`).write(buffer);
+            }
+            catch (e) {
+                // UNABLE_TO_VERIFY_LEAF_SIGNATURE
+                console.log(e);
+            }
         }
     }
     page.close();
-}))();
+});
